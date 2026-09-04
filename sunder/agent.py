@@ -5,6 +5,7 @@ Architecture is ready for a real supervisor model.
 """
 from __future__ import annotations
 
+import json
 import re
 import time
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 
+from sunder.aegis_bridge import session_graph
 from sunder.fork import ForkManager
 from sunder.gate import ConstitutionalGate, Risk
 from sunder.vsa import VSAMemory
@@ -32,14 +34,11 @@ class Agent:
         self.offline = offline
         self.max_steps = max_steps
         self.memory = VSAMemory(dim=dim)
-        self.gate = ConstitutionalGate(offline=offline)
+        self.gate = ConstitutionalGate(offline=offline, max_high_risk=8)
         self.forks = ForkManager(self.workspace)
         self.history: List[Dict[str, Any]] = []
 
-    # ── Tools (all go through the Gate) ──────────────────────────
-
     def tool_scan(self) -> Dict[str, Any]:
-        """SCAN current reality into VSA memory."""
         def _scan():
             files = []
             for p in self.workspace.rglob("*"):
@@ -63,7 +62,7 @@ class Agent:
     def tool_list_dir(self, rel: str = ".") -> Dict[str, Any]:
         def _list():
             target = (self.workspace / rel).resolve()
-            if not str(target).startswith(str(self.workspace)):
+            if not target.is_relative_to(self.workspace):
                 raise PermissionError("path escapes workspace")
             if not target.exists():
                 raise FileNotFoundError(rel)
@@ -122,7 +121,7 @@ class Agent:
     def tool_read(self, relpath: str) -> Dict[str, Any]:
         def _read():
             p = (self.workspace / relpath).resolve()
-            if not str(p).startswith(str(self.workspace)):
+            if not p.is_relative_to(self.workspace):
                 raise PermissionError("path escapes workspace")
             if not p.exists():
                 raise FileNotFoundError(relpath)
@@ -134,7 +133,7 @@ class Agent:
     def tool_write(self, relpath: str, content: str) -> Dict[str, Any]:
         def _write():
             p = (self.workspace / relpath).resolve()
-            if not str(p).startswith(str(self.workspace)):
+            if not p.is_relative_to(self.workspace):
                 raise PermissionError("path escapes workspace")
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding="utf-8")
@@ -144,20 +143,18 @@ class Agent:
         result = self.gate.execute("write", _write, risk=Risk.HIGH)
         return {"gate": result.status, "data": result.output, "error": result.error}
 
-    # ── Main loop ────────────────────────────────────────────────
-
     def run(self, goal: str) -> Dict[str, Any]:
         console.print(f"\n[bold magenta]GOAL[/]  {goal}")
         console.print(f"[dim]workspace[/] {self.workspace}")
         console.print(f"[dim]mode[/]     {'OFFLINE' if self.offline else 'ONLINE'}\n")
 
-        console.print("[cyan]→ SCAN[/] reading reality…")
+        console.print("[cyan]-> SCAN[/] reading reality...")
         scan = self.tool_scan()
         self.history.append({"step": 0, "tool": "scan", **scan})
         if scan["gate"] == "PASS" and scan["data"]:
-            console.print(f"   [green]ok[/] {scan['data']['files_scanned']} files → VSA memory")
+            console.print(f"   [green]ok[/] {scan['data']['files_scanned']} files -> VSA memory")
 
-        console.print("[cyan]→ SNAP[/] creating version-fork…")
+        console.print("[cyan]-> SNAP[/] creating version-fork...")
         snap = self.tool_snap(description=f"pre-goal: {goal[:60]}")
         self.history.append({"step": 1, "tool": "snap", **snap})
         fork_id = None
@@ -165,11 +162,6 @@ class Agent:
             fork_id = snap["data"]["id"]
             console.print(f"   [green]ok[/] fork {fork_id} ({snap['data']['files']} files)")
 
-        console.print("[cyan]→ PLAN[/] (v0.1 heuristic supervisor)")
-        console.print("   [dim]Real model-driven planning is the next vertical slice.[/]")
-        console.print("   [dim]VSA + Gate + Forks + tools are live and tested.[/]")
-
-        # Light exploration so the session does real work
         listing = self.tool_list_dir(".")
         self.history.append({"step": 2, "tool": "list_dir", **listing})
 
@@ -178,22 +170,18 @@ class Agent:
             f"**Goal:** {goal}\n\n"
             f"**Workspace:** `{self.workspace}`\n\n"
             f"**Mode:** {'offline' if self.offline else 'online'}\n\n"
-            f"**Fork:** `{fork_id}`\n\n"
-            f"## Status\n\n"
-            f"v0.1 runtime is live.\n"
-            f"- SCAN ingested the workspace into VSA memory.\n"
-            f"- SNAP created a reversible version-fork.\n"
-            f"- Constitutional Gate enforced fail-closed tool use.\n"
-            f"- list_dir / search / read / write tools are available.\n\n"
-            f"Next slice: wire a real local or gated remote supervisor model.\n"
+            f"**Fork:** `{fork_id}`\n"
         )
         write = self.tool_write(".sunder/session_report.md", report)
         self.history.append({"step": 3, "tool": "write", **write})
-        if write["gate"] == "PASS":
-            console.print("   [green]ok[/] wrote .sunder/session_report.md")
+
+        graph = session_graph(goal, str(self.workspace), fork_id)
+        manifest = json.dumps(graph.manifest(), indent=2)
+        gwrite = self.tool_write(".sunder/aegis_manifest.json", manifest)
+        self.history.append({"step": 3, "tool": "aegis_manifest", **gwrite})
 
         if fork_id:
-            console.print(f"[cyan]→ SUNDER[/] keeping fork {fork_id}")
+            console.print(f"[cyan]-> SUNDER[/] keeping fork {fork_id}")
             sunder = self.tool_sunder(fork_id, keep=True)
             self.history.append({"step": 4, "tool": "sunder", **sunder})
 
