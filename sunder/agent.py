@@ -1,22 +1,24 @@
 """SUNDER Agent — the sovereign coding loop.
 
 Honest v0.1: local tools only, no external LLM calls yet.
-The architecture is ready for a real supervisor model.
+Architecture is ready for a real supervisor model.
 """
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from rich.console import Console
-from rich.table import Table
 
 from sunder.fork import ForkManager
 from sunder.gate import ConstitutionalGate, Risk
 from sunder.vsa import VSAMemory
 
 console = Console()
+
+TEXT_SUFFIXES = {".py", ".md", ".txt", ".json", ".toml", ".yml", ".yaml", ".rs", ".ts", ".js", ".tsx", ".jsx"}
 
 class Agent:
     def __init__(
@@ -37,25 +39,71 @@ class Agent:
     # ── Tools (all go through the Gate) ──────────────────────────
 
     def tool_scan(self) -> Dict[str, Any]:
-        """SCAN current reality."""
+        """SCAN current reality into VSA memory."""
         def _scan():
             files = []
             for p in self.workspace.rglob("*"):
-                if p.is_file() and not any(part.startswith(".") for part in p.parts):
-                    if p.suffix.lower() in {".py", ".md", ".txt", ".json", ".toml"}:
-                        try:
-                            content = p.read_text(encoding="utf-8", errors="replace")
-                            key = self.memory.remember_file(p, content)
-                            files.append({"path": str(p.relative_to(self.workspace)), "key": key})
-                        except Exception:
-                            pass
+                if not p.is_file():
+                    continue
+                if any(part.startswith(".") for part in p.parts):
+                    continue
+                if p.suffix.lower() not in TEXT_SUFFIXES:
+                    continue
+                try:
+                    content = p.read_text(encoding="utf-8", errors="replace")
+                    key = self.memory.remember_file(p, content)
+                    files.append({"path": str(p.relative_to(self.workspace)), "key": key})
+                except Exception:
+                    pass
             return {"files_scanned": len(files), "memory": self.memory.stats(), "sample": files[:8]}
 
         result = self.gate.execute("scan", _scan, risk=Risk.LOW)
         return {"gate": result.status, "data": result.output, "error": result.error}
 
+    def tool_list_dir(self, rel: str = ".") -> Dict[str, Any]:
+        def _list():
+            target = (self.workspace / rel).resolve()
+            if not str(target).startswith(str(self.workspace)):
+                raise PermissionError("path escapes workspace")
+            if not target.exists():
+                raise FileNotFoundError(rel)
+            entries = []
+            for p in sorted(target.iterdir()):
+                if p.name.startswith("."):
+                    continue
+                entries.append({"name": p.name, "type": "dir" if p.is_dir() else "file"})
+            return {"path": rel, "entries": entries[:100]}
+
+        result = self.gate.execute("list_dir", _list, risk=Risk.LOW)
+        return {"gate": result.status, "data": result.output, "error": result.error}
+
+    def tool_search(self, pattern: str, max_hits: int = 20) -> Dict[str, Any]:
+        def _search():
+            rx = re.compile(pattern, re.IGNORECASE)
+            hits = []
+            for p in self.workspace.rglob("*"):
+                if not p.is_file() or p.suffix.lower() not in TEXT_SUFFIXES:
+                    continue
+                if any(part.startswith(".") for part in p.parts):
+                    continue
+                try:
+                    for i, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                        if rx.search(line):
+                            hits.append({
+                                "path": str(p.relative_to(self.workspace)),
+                                "line": i,
+                                "text": line.strip()[:120],
+                            })
+                            if len(hits) >= max_hits:
+                                return {"pattern": pattern, "hits": hits}
+                except Exception:
+                    pass
+            return {"pattern": pattern, "hits": hits}
+
+        result = self.gate.execute("search", _search, risk=Risk.LOW)
+        return {"gate": result.status, "data": result.output, "error": result.error}
+
     def tool_snap(self, description: str = "") -> Dict[str, Any]:
-        """SNAP a parallel version-fork."""
         def _snap():
             fork = self.forks.snap(description=description or f"auto-{int(time.time())}")
             return fork.summary()
@@ -64,33 +112,30 @@ class Agent:
         return {"gate": result.status, "data": result.output, "error": result.error}
 
     def tool_list_forks(self) -> Dict[str, Any]:
-        def _list():
-            return self.forks.list()
-
-        result = self.gate.execute("list_forks", _list, risk=Risk.LOW)
+        result = self.gate.execute("list_forks", lambda: self.forks.list(), risk=Risk.LOW)
         return {"gate": result.status, "data": result.output, "error": result.error}
 
     def tool_sunder(self, fork_id: str, keep: bool = True) -> Dict[str, Any]:
-        """SUNDER — commit or discard a fork."""
-        def _sunder():
-            return self.forks.sunder(fork_id, keep=keep)
-
-        result = self.gate.execute("sunder", _sunder, risk=Risk.HIGH)
+        result = self.gate.execute("sunder", lambda: self.forks.sunder(fork_id, keep=keep), risk=Risk.HIGH)
         return {"gate": result.status, "data": result.output, "error": result.error}
 
     def tool_read(self, relpath: str) -> Dict[str, Any]:
         def _read():
-            p = self.workspace / relpath
+            p = (self.workspace / relpath).resolve()
+            if not str(p).startswith(str(self.workspace)):
+                raise PermissionError("path escapes workspace")
             if not p.exists():
                 raise FileNotFoundError(relpath)
-            return p.read_text(encoding="utf-8", errors="replace")[:4000]
+            return p.read_text(encoding="utf-8", errors="replace")[:6000]
 
         result = self.gate.execute("read", _read, risk=Risk.LOW)
         return {"gate": result.status, "data": result.output, "error": result.error}
 
     def tool_write(self, relpath: str, content: str) -> Dict[str, Any]:
         def _write():
-            p = self.workspace / relpath
+            p = (self.workspace / relpath).resolve()
+            if not str(p).startswith(str(self.workspace)):
+                raise PermissionError("path escapes workspace")
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding="utf-8")
             self.memory.remember_file(p, content)
@@ -106,14 +151,12 @@ class Agent:
         console.print(f"[dim]workspace[/] {self.workspace}")
         console.print(f"[dim]mode[/]     {'OFFLINE' if self.offline else 'ONLINE'}\n")
 
-        # Step 0 — always SCAN first
         console.print("[cyan]→ SCAN[/] reading reality…")
         scan = self.tool_scan()
         self.history.append({"step": 0, "tool": "scan", **scan})
-        if scan["gate"] == "PASS":
+        if scan["gate"] == "PASS" and scan["data"]:
             console.print(f"   [green]ok[/] {scan['data']['files_scanned']} files → VSA memory")
 
-        # Step 1 — SNAP a safety fork before any mutation
         console.print("[cyan]→ SNAP[/] creating version-fork…")
         snap = self.tool_snap(description=f"pre-goal: {goal[:60]}")
         self.history.append({"step": 1, "tool": "snap", **snap})
@@ -122,13 +165,14 @@ class Agent:
             fork_id = snap["data"]["id"]
             console.print(f"   [green]ok[/] fork {fork_id} ({snap['data']['files']} files)")
 
-        # Remaining steps — placeholder supervisor logic for v0.1
-        # Real LLM planner will replace this in the next slice.
         console.print("[cyan]→ PLAN[/] (v0.1 heuristic supervisor)")
-        console.print("   [dim]Real model-driven planning lands in the next vertical slice.[/]")
-        console.print("   [dim]Architecture is ready: VSA + Gate + Forks are live.[/]")
+        console.print("   [dim]Real model-driven planning is the next vertical slice.[/]")
+        console.print("   [dim]VSA + Gate + Forks + tools are live and tested.[/]")
 
-        # Demo a safe write into a sunder report
+        # Light exploration so the session does real work
+        listing = self.tool_list_dir(".")
+        self.history.append({"step": 2, "tool": "list_dir", **listing})
+
         report = (
             f"# SUNDER Session Report\n\n"
             f"**Goal:** {goal}\n\n"
@@ -136,22 +180,22 @@ class Agent:
             f"**Mode:** {'offline' if self.offline else 'online'}\n\n"
             f"**Fork:** `{fork_id}`\n\n"
             f"## Status\n\n"
-            f"v0.1 runtime is live. SCAN and SNAP succeeded.\n"
-            f"Constitutional Gate is enforcing fail-closed tool use.\n"
-            f"VSA project memory has ingested the workspace.\n\n"
-            f"Next: wire a real local/remote supervisor model.\n"
+            f"v0.1 runtime is live.\n"
+            f"- SCAN ingested the workspace into VSA memory.\n"
+            f"- SNAP created a reversible version-fork.\n"
+            f"- Constitutional Gate enforced fail-closed tool use.\n"
+            f"- list_dir / search / read / write tools are available.\n\n"
+            f"Next slice: wire a real local or gated remote supervisor model.\n"
         )
         write = self.tool_write(".sunder/session_report.md", report)
-        self.history.append({"step": 2, "tool": "write", **write})
-
+        self.history.append({"step": 3, "tool": "write", **write})
         if write["gate"] == "PASS":
             console.print("   [green]ok[/] wrote .sunder/session_report.md")
 
-        # Optional: keep the fork (it is already the current state)
         if fork_id:
-            console.print(f"[cyan]→ SUNDER[/] keeping fork {fork_id} as working reality")
+            console.print(f"[cyan]→ SUNDER[/] keeping fork {fork_id}")
             sunder = self.tool_sunder(fork_id, keep=True)
-            self.history.append({"step": 3, "tool": "sunder", **sunder})
+            self.history.append({"step": 4, "tool": "sunder", **sunder})
 
         return {
             "status": "OK",
