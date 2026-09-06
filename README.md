@@ -4,9 +4,9 @@
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║   ███████╗██╗   ██╗███╗   ██╗██████╗ ███████╗██████╗         ║
-║   ██╔════╝██║   ██║████╗  ██║██╔══██╗██╔════╝██╔══██╗        ║
+║   ██╔════╝██║   ██║████╗  ██║██╔══██║██╔════╝██╔══██║        ║
 ║   ███████╗██║   ██║██╔██╗ ██║██║  ██║█████╗  ██████╔╝        ║
-║   ╚════██║██║   ██║██║╚██╗██║██║  ██║██╔══╝  ██╔══██╗        ║
+║   ╚════██║██║   ██║██║╚██╗██║██║  ██║██╔══╝  ██╔══██║        ║
 ║   ███████║╚██████╔╝██║ ╚████║██████╔╝███████╗██║  ██║        ║
 ║   ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝        ║
 ║                                                              ║
@@ -16,76 +16,63 @@
 
 # SUNDER
 
-### Local-first autonomous coding agent  
-**You are not the hero. You are the cold boot.**
+### Local-first coding-agent experiment  
+**Classification: RESEARCH / EXPERIMENTAL (Sweep-080)**
 
-**THE CITY WRITES ITS OWN REALITY.**  
-**YOU JUST EDIT IT.**
+You are not the hero. You are the cold boot.
 
-[![ACTIVE](https://img.shields.io/badge/●_ACTIVE-a855f7?style=for-the-badge&labelColor=0f0f23)](https://github.com/beyond-repair/sunder)
+[![RESEARCH](https://img.shields.io/badge/●_RESEARCH-22d3ee?style=for-the-badge&labelColor=0f0f23)](https://github.com/beyond-repair/ADL-Governance)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-22d3ee?style=for-the-badge&labelColor=0f0f23)](#)
 [![Offline](https://img.shields.io/badge/network__access-FALSE_by_default-ef4444?style=for-the-badge&labelColor=0f0f23)](#)
 [![License](https://img.shields.io/badge/License-MIT-a855f7?style=for-the-badge&labelColor=0f0f23)](LICENSE)
 
 ```
-STABILITY  ████████████████░░░░░░░░  72%
-ALERT      ░░░░░░░░░░░░░░░░░░░░░░░░  18%
+CLAIM LEVEL  ≤ 1  (unit tests + local tools; no supervisor LLM)
+PRODUCT      sovereign-clean-room is the ACTIVE offline runtime
 ```
 
 </div>
 
 ---
 
-## ▌ Why SUNDER exists
+## Claim policy (Sweep-080)
 
-Cursor feels magical because the AI lives *inside* the editor.  
-Auto-GPT felt alive because it could chain tools toward a goal.
+| Feature | State |
+|---------|-------|
+| Local tools + constitutional gate + VSA/fork tests | VERIFIED (CI run 33996778685 success, Sweep-078) |
+| Supervisor LLM (local or remote) | PLANNED |
+| Production autonomous coding agent | UNVERIFIED |
+| Portfolio ACTIVE runtime | SUPERSEDED by `sovereign-clean-room` |
 
-Most open-source agents still suffer from three fatal flaws:
-
-1. **Amnesia** — context dies between sessions or is just RAG chunks.
-2. **No authority boundary** — the agent can expand its own power.
-3. **No reversible reality** — once it edits, the previous world is gone.
-
-SUNDER fixes all three:
-
-- **Hyperspherical VSA memory** (FHRR) — compositional, invertible, offline project memory.
-- **Constitutional Gate** — every tool call is fail-closed. Network and high-risk actions require explicit authority.
-- **Version Forking** — SNAP a parallel reality of the codebase, experiment, then SUNDER (commit or discard).
+Do not treat this repository as the canonical agent product.
 
 ---
 
-## ▌ The Loop
+## Why SUNDER exists
+
+Experiment toward: project memory that survives sessions, a fail-closed tool gate, and reversible version forks.
+
+Honest v0.1 (code comment in `sunder/agent.py`): local tools only; no external LLM calls yet.
+
+---
+
+## The Loop
 
 ```text
-  ┌─────────┐
-  │  SCAN   │  Read the current reality (files, git, memory)
-  └────┬────┘
-       ▼
-  ┌─────────┐
-  │  SNAP   │  Create a parallel version-fork of state
-  └────┬────┘
-       ▼
-  ┌─────────┐
-  │ SUNDER  │  Apply changes, merge, or discard the fork
-  └─────────┘
+  SCAN  →  SNAP  →  SUNDER
 ```
 
----
-
-## ▌ Tools
-
-| # | Tool | Function |
-|:-:|:----:|----------|
-| 1 | **SCAN** | Inspect project + VSA memory |
-| 2 | **SNAP** | Fork current reality |
-| 3 | **SPIKE** | High-risk action (still gated) |
-| 4 | **ANCHOR** | Pin a stable checkpoint |
-| 5 | **SUNDER** | Commit or discard the fork |
+| # | Tool | Function | State |
+|:-:|:----:|----------|-------|
+| 1 | SCAN | Inspect project + VSA memory | PARTIAL |
+| 2 | SNAP | Fork current reality | PARTIAL |
+| 3 | SPIKE | High-risk action (gated) | PARTIAL |
+| 4 | ANCHOR | Pin a stable checkpoint | PARTIAL |
+| 5 | SUNDER | Commit or discard the fork | PARTIAL |
 
 ---
 
-## ▌ Quick Start
+## Quick Start
 
 ```bash
 git clone https://github.com/beyond-repair/sunder.git
@@ -94,47 +81,8 @@ pip install -r requirements.txt
 python -m sunder "Refactor the authentication module and add tests"
 ```
 
----
-
-## ▌ Architecture (honest)
-
-```text
-User Goal
-   │
-   ▼
-┌──────────────────┐
-│  Supervisor LLM  │  (local or gated remote)
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐     ┌─────────────────────┐
-│  VSA Memory      │◄───►│  Constitutional Gate │
-│  (FHRR project   │     │  (fail-closed tools) │
-│   graph)         │     └─────────────────────┘
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  Version Forks   │  SNAP → experiment → SUNDER
-└──────────────────┘
-```
-
-This is not another thin wrapper around an API.  
-It is a sovereign runtime for code.
+Expect heuristic / local-tool behavior, not a live supervisor LLM.
 
 ---
 
-<div align="center">
-
-```
-YOU WERE HERE BEFORE.
-VERSION 17 FAILED.
-DO NOT TRUST SABLE.
-THE CITY REMEMBERS.
-```
-
-**REWRITE · BUILD · TRANSCEND**
-
-[Atomic Dream Labs](https://github.com/beyond-repair)
-
-</div>
+[Atomic Dream Labs](https://github.com/beyond-repair) · governed by [ADL-Governance](https://github.com/beyond-repair/ADL-Governance)
