@@ -40,6 +40,15 @@ def test_version_fork_roundtrip():
         assert result["status"] == "COMMITTED"
         assert (root / "hello.py").read_text(encoding="utf-8") == "print('hi')\n"
 
+def test_gate_high_risk_budget():
+    g = ConstitutionalGate(offline=True, max_high_risk=1)
+    first = g.execute("h1", lambda: "ok", risk=Risk.HIGH)
+    second = g.execute("h2", lambda: "no", risk=Risk.CRITICAL)
+    assert first.status == "PASS"
+    assert second.status == "REFUSED"
+    assert "budget" in (second.error or "")
+
+
 def test_agent_smoke_and_tools():
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)

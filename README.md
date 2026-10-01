@@ -8,7 +8,7 @@
 ║   ███████╗██║   ██║██╔██╗ ██║██║  ██║█████╗  ██████╔╝        ║
 ║   ╚════██║██║   ██║██║╚██╗██║██║  ██║██╔══╝  ██╔══██║        ║
 ║   ███████║╚██████╔╝██║ ╚████║██████╔╝███████╗██║  ██║        ║
-║   ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝        ║
+║   ╚══════╝ ╚═════╝  ╚═╝  ╚═══╝╚═════╝  ╚══════╝╚═╝  ╚═╝        ║
 ║                                                              ║
 ║         ＳＣＡＮ  →  ＳＮＡＰ  →  ＳＵＮＤＥＲ                ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -17,7 +17,7 @@
 # SUNDER
 
 ### Local-first coding-agent experiment  
-**Classification: RESEARCH / EXPERIMENTAL (Sweep-080)**
+**Classification: RESEARCH / EXPERIMENTAL (Sweep-181 reconfirm; first lock Sweep-080)**
 
 You are not the hero. You are the cold boot.
 
@@ -39,12 +39,14 @@ PRODUCT      sovereign-clean-room is the ACTIVE offline runtime
 
 | Feature | State |
 |---------|-------|
-| Local tools + constitutional gate + VSA/fork tests | VERIFIED (CI run 33996778685 success, Sweep-078) |
+| Local tools + constitutional gate + VSA/fork tests | VERIFIED locally Sweep-181 (6 pytest); CI run 33996778685 success was Sweep-078, post-181 Actions not observed at commit time |
 | Supervisor LLM (local or remote) | PLANNED |
 | Production autonomous coding agent | UNVERIFIED |
 | Portfolio ACTIVE runtime | SUPERSEDED by `sovereign-clean-room` |
 
 Do not treat this repository as the canonical agent product.
+
+Claim ledger: [CLAIM_STATUS.md](CLAIM_STATUS.md).
 
 ---
 
