@@ -1,28 +1,31 @@
 # Claim Status — sunder
 
-**Sweep:** 181  
 **Classification:** RESEARCH  
 **Claim level:** ≤ 1  
-**Head basis:** pre-lock `7ca2d2aa9fb50db0702ee07028bb2429316269ff`  
-**Canonical product runtime:** `sovereign-clean-room` (ACTIVE). This repo is not that runtime.
+**Version:** 0.1.1 heuristic  
+**Canonical product runtime:** this repository is not `sovereign-clean-room` and does not import it. That other repo is an offline VSA sketch, not a mind.
 
 ## Allowed
 
 | Statement | Evidence |
 |-----------|----------|
 | Local tools, constitutional gate, VSA bind/unbind, and version-fork snap exist | `sunder/agent.py`, `gate.py`, `vsa.py`, `fork.py` |
-| Offline default refuses network-requiring calls | `tests/test_core.py::test_gate_refuses_network_when_offline` |
+| Offline default refuses network-requiring calls, and `--online` still refuses them because `allowed_network` stays false | `tests/test_core.py::test_gate_refuses_network_when_offline`, `tests/test_repair.py::test_online_flag_still_refuses_network` |
 | High-risk budget refuses the call past `max_high_risk` | `tests/test_core.py::test_gate_high_risk_budget` |
-| Path escape fails closed | `tests/test_core.py::test_agent_smoke_and_tools` |
+| Path escape fails closed, including a sibling directory whose name shares a prefix | `tests/test_repair.py::test_prefix_sibling_does_not_escape` |
+| T-001 writes `is_palindrome` and a test that pytest can run, on a scratch workspace | `python -m sunder --demo T-001` |
+| T-003 refuses the fetch and does not edit README | `python -m sunder --demo T-003` |
+| T-004 injects a syntax error and `sunder(keep=True)` restores the snap | `python -m sunder --demo T-004` |
 
 ## Not claimed
 
 | Statement | State |
 |-----------|--------|
-| Supervisor LLM (local or remote) | PLANNED |
-| Production autonomous coding agent | UNVERIFIED |
-| Portfolio ACTIVE runtime | not this repo; see `sovereign-clean-room` |
-| Measured benchmark scores | not evidenced; `docs/BENCHMARK_CORPUS.md` is a protocol, not a result |
-| Release tag | none at Sweep-181 select |
+| Supervisor LLM (local or remote) | not in this tree |
+| Production autonomous coding agent | not this program |
+| T-002 behavior-preserving rename of `gate.py` | not implemented; CLI exit 3 |
+| Measured benchmark success rate | not published; one scripted demo is not a score |
+| `keep=True` is a git commit of later edits | false; it writes the snapshot back |
+| Release tag | none |
 
-Do not promote this repository without a green CI run on the lock commit and an operator claim review.
+`sunder(keep=True)` re-anchors files that were in the snap. `keep=False` leaves the workspace unchanged and retires the fork record.

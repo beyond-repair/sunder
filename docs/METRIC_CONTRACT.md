@@ -6,6 +6,8 @@
 **Version:** 0.1.0-contract  
 **Date:** 2026-09-05
 
+**v0.1.1 note:** scripted demos are not a measured success rate. Fork ids are random, so the reproducibility row is not met. Do not state the 0.70 target as a result.
+
 ## Purpose
 
 This document defines the **only** success criteria that may be asserted for Sunder.

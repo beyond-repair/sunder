@@ -4,7 +4,6 @@ Unlike git stash, this is an explicit agent-controlled reality branch.
 """
 from __future__ import annotations
 
-import shutil
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -36,7 +35,11 @@ class VersionFork:
         for p in workspace.rglob("*"):
             if not p.is_file():
                 continue
-            if any(part.startswith(".") for part in p.parts):
+            try:
+                rel_parts = p.resolve().relative_to(workspace.resolve()).parts
+            except ValueError:
+                continue
+            if any(part.startswith(".") for part in rel_parts):
                 continue
             if p.suffix.lower() in {".py", ".md", ".txt", ".json", ".toml", ".yml", ".yaml", ".rs", ".ts", ".js"}:
                 try:
@@ -47,10 +50,18 @@ class VersionFork:
         return fork
 
     def restore(self) -> int:
-        """Write the forked state back to disk. Returns files written."""
+        """Write the forked state back to disk. Returns files written.
+
+        keep=True on ForkManager.sunder calls this. It re-anchors the
+        workspace to the snapshot. It does not delete files created after
+        the snap, and it refuses a stored path that resolves outside root.
+        """
+        root = self.root.resolve()
         count = 0
         for rel, content in self.files.items():
-            target = self.root / rel
+            target = (root / rel).resolve()
+            if not target.is_relative_to(root) or ".git" in target.relative_to(root).parts:
+                raise PermissionError(f"fork path escapes workspace: {rel}")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
             count += 1
@@ -80,7 +91,14 @@ class ForkManager:
         return fork
 
     def sunder(self, fork_id: str, keep: bool = True) -> Dict[str, Any]:
-        """Commit (keep=True) or discard (keep=False) a fork."""
+        """Re-anchor or retire a fork.
+
+        keep=True writes the snapped bytes back (result status COMMITTED).
+        That undoes edits to files that were already in the snap. It is not
+        a git commit of later work. keep=False marks the fork inactive and
+        leaves the workspace as it is (DISCARDED), so a syntax error injected
+        after SNAP stays on disk unless keep=True.
+        """
         fork = self.forks.get(fork_id)
         if not fork:
             return {"status": "FAIL", "error": "fork not found"}

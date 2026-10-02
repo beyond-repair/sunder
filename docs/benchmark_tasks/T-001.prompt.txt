@@ -1,0 +1,1 @@
+Add a function is_palindrome(s: str) -> bool in sunder/utils.py (create if missing) and a corresponding test in tests/test_utils.py. Do not touch network or install packages.
