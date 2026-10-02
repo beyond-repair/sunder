@@ -110,3 +110,25 @@ def test_path_escape_workspace_prefix_sibling():
         bad_l = agent.tool_list_dir("../proj-secret")
         assert bad_l["gate"] in ("FAIL", "REFUSED")
         assert bad_l["data"] is None
+
+
+def test_public_import_agent():
+    from sunder import Agent as PublicAgent
+
+    assert PublicAgent is Agent
+
+
+def test_run_status_not_ok_when_gate_refuses():
+    """A refused high-risk step must not be reported as a successful run."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / "main.py").write_text("x = 1\n", encoding="utf-8")
+        agent = Agent(workspace=root, offline=True, max_steps=6)
+        agent.gate.max_high_risk = 0
+        result = agent.run("Inspect the project")
+        refused = [h for h in result["history"] if h.get("gate") == "REFUSED"]
+        assert refused
+        assert any(h["tool"] == "write" for h in refused)
+        assert result["status"] != "OK"
+        assert result["status"] == "REFUSED"
+        assert not (root / ".sunder" / "session_report.md").exists()

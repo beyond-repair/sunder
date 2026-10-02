@@ -204,8 +204,16 @@ class Agent:
             sunder = self.tool_sunder(fork_id, keep=True)
             self.history.append({"step": 4, "tool": "sunder", **sunder})
 
+        gates = {step.get("gate") for step in self.history}
+        if "FAIL" in gates:
+            status = "FAIL"
+        elif "REFUSED" in gates:
+            status = "REFUSED"
+        else:
+            status = "OK"
+
         return {
-            "status": "OK",
+            "status": status,
             "steps": len(self.history),
             "forks": len(self.forks.forks),
             "memory": self.memory.stats(),
