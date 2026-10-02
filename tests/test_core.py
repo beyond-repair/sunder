@@ -78,3 +78,35 @@ def test_agent_smoke_and_tools():
         assert result["status"] == "OK"
         assert result["steps"] >= 3
         assert (root / ".sunder" / "session_report.md").exists()
+
+
+def test_path_escape_workspace_prefix_sibling():
+    """A sibling whose name has the workspace name as a string prefix is outside."""
+    with tempfile.TemporaryDirectory() as td:
+        parent = Path(td)
+        root = parent / "proj"
+        sibling = parent / "proj-secret"
+        root.mkdir()
+        sibling.mkdir()
+        (sibling / "secret.txt").write_text("top-secret\n", encoding="utf-8")
+        (root / "ok.txt").write_text("safe\n", encoding="utf-8")
+
+        agent = Agent(workspace=root, offline=True)
+
+        good = agent.tool_read("ok.txt")
+        assert good["gate"] == "PASS"
+        assert good["data"] == "safe\n"
+
+        bad = agent.tool_read("../proj-secret/secret.txt")
+        assert bad["gate"] in ("FAIL", "REFUSED")
+        assert bad["data"] is None
+        assert "top-secret" not in (bad["error"] or "")
+
+        planted = sibling / "pwned.txt"
+        bad_w = agent.tool_write("../proj-secret/pwned.txt", "nope")
+        assert bad_w["gate"] in ("FAIL", "REFUSED")
+        assert not planted.exists()
+
+        bad_l = agent.tool_list_dir("../proj-secret")
+        assert bad_l["gate"] in ("FAIL", "REFUSED")
+        assert bad_l["data"] is None

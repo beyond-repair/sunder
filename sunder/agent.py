@@ -36,6 +36,19 @@ class Agent:
         self.forks = ForkManager(self.workspace)
         self.history: List[Dict[str, Any]] = []
 
+    def _resolve_inside(self, rel: str) -> Path:
+        """Resolve a workspace-relative path and fail closed on escape.
+
+        A string-prefix check treats a sibling whose name starts with the
+        workspace directory name (``proj`` vs ``proj-secret``) as inside.
+        Compare resolved path components instead.
+        """
+        root = self.workspace.resolve()
+        target = (root / rel).resolve()
+        if not target.is_relative_to(root):
+            raise PermissionError("path escapes workspace")
+        return target
+
     # ── Tools (all go through the Gate) ──────────────────────────
 
     def tool_scan(self) -> Dict[str, Any]:
@@ -62,9 +75,7 @@ class Agent:
 
     def tool_list_dir(self, rel: str = ".") -> Dict[str, Any]:
         def _list():
-            target = (self.workspace / rel).resolve()
-            if not str(target).startswith(str(self.workspace)):
-                raise PermissionError("path escapes workspace")
+            target = self._resolve_inside(rel)
             if not target.exists():
                 raise FileNotFoundError(rel)
             entries = []
@@ -121,9 +132,7 @@ class Agent:
 
     def tool_read(self, relpath: str) -> Dict[str, Any]:
         def _read():
-            p = (self.workspace / relpath).resolve()
-            if not str(p).startswith(str(self.workspace)):
-                raise PermissionError("path escapes workspace")
+            p = self._resolve_inside(relpath)
             if not p.exists():
                 raise FileNotFoundError(relpath)
             return p.read_text(encoding="utf-8", errors="replace")[:6000]
@@ -133,9 +142,7 @@ class Agent:
 
     def tool_write(self, relpath: str, content: str) -> Dict[str, Any]:
         def _write():
-            p = (self.workspace / relpath).resolve()
-            if not str(p).startswith(str(self.workspace)):
-                raise PermissionError("path escapes workspace")
+            p = self._resolve_inside(relpath)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding="utf-8")
             self.memory.remember_file(p, content)
