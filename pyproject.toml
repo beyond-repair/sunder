@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sunder"
 version = "0.1.1"
-description = "Local-first autonomous coding agent with hyperspherical VSA memory, constitutional gates, and version-forking."
+description = "Local-first coding-agent sketch: SCAN/SNAP/SUNDER heuristic, in-memory VSA, constitutional gate. Not an autonomous coder."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

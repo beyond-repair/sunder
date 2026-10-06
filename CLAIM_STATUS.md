@@ -27,5 +27,7 @@
 | Measured benchmark success rate | not published; one scripted demo is not a score |
 | `keep=True` is a git commit of later edits | false; it writes the snapshot back |
 | Release tag | none |
+| Package description calls this an autonomous coding agent | forbidden; `pyproject.toml` description is claim-capped |
+| `pynacl` / `httpx` provide crypto or HTTP features | not used by the loop; declared only |
 
 `sunder(keep=True)` re-anchors files that were in the snap. `keep=False` leaves the workspace unchanged and retires the fork record.
